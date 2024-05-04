@@ -147,7 +147,122 @@ been built yet, so what we'd want to do is *build* our image using:
 docker build .
 ```
 
-This command tells Docker to build an image using a Dockerfile. The `.` in this case tells docker where the Dockerfile is so in this
-case it means we're running `docker build` from the same directory that our docker file exists in.
+This command tells Docker to *build an image* using a Dockerfile. The `.` in this case tells docker where the Dockerfile is so in this
+case it means we're running `docker build` from the same directory that our docker file exists in.  If your build command is successful
+there will be a bunch of output, the most important piece being the image ID.  Using the image id you can actually run the container
+now.
+
+```bash
+docker run 283472734
+```
+
+This will start a container based on a built image, and you'll notice that it hangs the terminal because the node process from our image does not stop, this
+is exactly what we expect.
+
+**NOTE** `docker run` will ALWAYS start a new container, if you want to restart a container that was previously stopped this not the command you
+want to use.
+
+## EXPOSE BS, and publishing containers
+
+It's a good idea to add an `EXPOSE` command because it serves as good documentation, but it doesn't actually expose that port. In fact
+you could leave it out entirely because the acutal port forwarding is controlled when you publish a container while running it. So for
+our example you can expose container's port 80 and map it to the local system's port 3000:
+
+```bash
+docker run -p 3000:80 283472734
+```
+
+## Relationship between images and containers
+
+images are immutable. If you make changes to your application code and then restart the container you will notice no changes,
+this is because the image was already built.  So if you make any changes to your application code you need to rebuild the image
+if you want to see those changes. This is what makes containers so secure.
 
 
+# Image Layers
+
+Each instruction in a Dockerfile represents a layer in an image.  When you rebuild an image any layers that did not change will
+be run from cache rather than rebuilding.  This makes things much more efficient and points out that Docker is smart enough to 
+make decisions on it's own about how to speed up build times.
+
+Note that as soon as a layer is determined to require a rebuild, ALL SUBSEQUENT layers will be rebuilt ignoring cache.
+
+Understanding this concept points out something that can be optimized in our previous Dockerfile.  Currently we copy all files
+over and then run `npm install`.  Because of the layer concept, this means that any change to our project will cause a rebuilt
+from the COPY step and ALL SUBSEQUENT layers will run without cache.  The bad side effect here is that we will be running `npm install`
+even if we don't need to do so, that means the better practice is to extract the package.json step and install above our project code
+like so:
+
+```Dockerfile
+FROM node
+
+WORKDIR /app
+
+COPY package.json /app
+
+RUN npm install
+
+COPY . /app
+
+EXPOSE 80
+
+CMD ["node", "server.js"]
+```
+
+Now this means that when building the image, changes to our application code will not automatically cause an npm install because
+that step exists on a layer above.
+
+## Restart a stopped container
+
+```bash
+Docker start 283472734
+```
+
+This brings the container back up into status: RUNNING. And it does so in "detached" mode so your terminal won't be blocked with
+logs from the container.  More on that below.
+
+## Attached/Detatched Containers
+
+Attached (the default with `docker run`) means you are listening to the output of that container from the same process (terminal), things
+like logs from an express server etc would be visible here.
+
+Detached (the default wiht `docker start`) means that the process runs in the background and you are not listening to the output of the
+container in the same terminal. This allows for you to continue using your terminal as you normally would.
+
+## Access logs from detatched containers
+
+If you had started a container in detached mode but were cuious about the logs, you can actually pull up all logs from a detached container after
+ the fact. And, you will have the all historical logs from the container as well. There is the `-f` flag if you only want logs from that point on.
+
+## Removing containers
+
+**NOTE**: You cannot remove a running container, stop the container first.
+
+```bash
+docker rm 283472734
+```
+
+remove images
+
+```bash
+docker rmi node
+```
+
+**NOTE**:  this will only work when the image is not used by ANY container (stopped or running)
+
+
+## Remove stopped containers automatically
+
+In a real-world setting if you were developing with docker you could need to update your image and hence your container frequently, this means a lot
+of obsolete images will quickly mount up.  To ensure these are automatically deleted once they stop, add `--rm` flag to the run command, ex:
+
+```bash
+docker run -p 3000:80 -d --rm 283472734
+```
+
+remove all unused images with *prune*
+
+## Definitions
+
+Container
+    - An isolated unit of software which is based on an image.
