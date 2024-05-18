@@ -439,6 +439,91 @@ so you would need to map it to an ENV if you wanted to use it there.
 I guess the advantage of args is you wouldn't need to set any new values in a file. Best
 to put them underneath npm install because of the layers concept.
 
+
+## Container Networking
+
+A major concept of Docker/Containers is that each container should do only one thing. If you
+have an express app that saves data to a mongo database, it's best to have one container for
+the server and one for the mongo instance.
+
+### www communication
+
+Without any setup or configuration, a container can make calls to the web no problem.  Which
+is important to note
+
+### connecting to the host from within the container
+
+Luckily you don't actually need to run the container differently to do this but instead you
+can just change your code. 'localhost' becomes 'host.docker.internal' and this will send your
+calls to your local (host) machine.
+
+So to make a call to your, local machine's mongo server instead of:
+
+```bash
+http://localhost:27017/database
+```
+
+You would call from your application code:
+
+```bash
+http://host.docker.internal:27017/database
+```
+
+This `host.docker.internal` is a predefined keyword in Docker to reference the host machine. instead of
+localhost.
+
+
+### Inspecting Containers
+
+Earlier we used the inspect command to look at how different images are built, but we can alos do this
+for containers as well.
+
+```bash
+docker container inspect <container-name>
+```
+
+This will yield a huge object, but an interesting piece is this bit:
+
+`NetworkSettings.IPAddress`
+
+In an example you can even create a mongodb container from the standard mongodb image, inspect it to find
+an IP address, and then use that IP in your connection string from another application.
+
+## Container Networks
+
+```bash
+--network <network-name>
+```
+
+Unlike volumes which can be created on-the-fly when you run containers, networks must be created prior to you
+using them. You create a network from the terminal using command:
+
+```bash
+docker network create <network-name>
+```
+
+So imagine an example where we created a network called `restaurants`:
+
+```bash
+docker network create <network-name>
+```
+
+I can start a mongodb container and run it with the flag:
+
+`--network restaurants` and it will be available on that network so now other containers
+on the same network, like say a node server can replace that hardcoded IP from earlier
+with the container name.
+
+```bash
+http://<container-name>:27017/database
+```
+
+Important to note with this setup that you really don't need to map ports of a container unless it will
+be accessed from an exterior host like your local machine.  If my mongo server will only be used on my
+docker network and never accessed directly then it doesn't need any port exposed because it will manage
+the container communication on the network itself.
+
+
 ## Definitions
 
 Container - An isolated unit of software which is based on an image.
