@@ -439,7 +439,6 @@ so you would need to map it to an ENV if you wanted to use it there.
 I guess the advantage of args is you wouldn't need to set any new values in a file. Best
 to put them underneath npm install because of the layers concept.
 
-
 ## Container Networking
 
 A major concept of Docker/Containers is that each container should do only one thing. If you
@@ -448,7 +447,7 @@ the server and one for the mongo instance.
 
 ### www communication
 
-Without any setup or configuration, a container can make calls to the web no problem.  Which
+Without any setup or configuration, a container can make calls to the web no problem. Which
 is important to note
 
 ### connecting to the host from within the container
@@ -471,7 +470,6 @@ http://host.docker.internal:27017/database
 
 This `host.docker.internal` is a predefined keyword in Docker to reference the host machine. instead of
 localhost.
-
 
 ### Inspecting Containers
 
@@ -519,10 +517,23 @@ http://<container-name>:27017/database
 ```
 
 Important to note with this setup that you really don't need to map ports of a container unless it will
-be accessed from an exterior host like your local machine.  If my mongo server will only be used on my
+be accessed from an exterior host like your local machine. If my mongo server will only be used on my
 docker network and never accessed directly then it doesn't need any port exposed because it will manage
 the container communication on the network itself.
 
+### IP Resolution in Docker
+
+Docker owns the environment in which your application runs. Docker is aware of requests
+that are leaving and coming to a container. It doesn't replace your source code with the IP
+of other contianers, it handles communication from the request level so it's important to
+know that the IPs won't ever be in your source code.
+
+## Multi-Continer Development
+
+Putting together a 3-container app is actually as simple as dockerizing the be & fe, putting
+them on a network and letting them talk to eachother. The database like mongo can be handled
+without even making a dockerfile, though the permissions and configuration are pretty loose and
+I would love to see how that's done more professionally.
 
 ## Definitions
 
